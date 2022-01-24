@@ -3,6 +3,7 @@ COMMIT = $(shell git rev-parse --short HEAD)
 
 install: build 
 	chmod 555 ./dprofile
+	mv ./dprofile /usr/local/bin/dprofile
 
 build:
 	go build -ldflags '-X github.com/bryanro92/dprofile/pkg/version.GitCommit=$(COMMIT)' . 

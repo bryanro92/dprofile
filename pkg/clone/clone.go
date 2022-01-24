@@ -12,8 +12,22 @@ import (
 )
 
 type cloneData struct {
-	repoList []string
+	repos    []string
 	cloneDir string
+}
+
+func Clone(ctx context.Context, args []string) error {
+	c := gitHubAuth(ctx)
+	err := cloneUserRepos(ctx, c)
+	return err
+}
+func gitHubAuth(ctx context.Context) *github.Client {
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: ghToken()},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+	c := github.NewClient(tc)
+	return c
 }
 
 func ghToken() string {
@@ -24,21 +38,36 @@ func ghToken() string {
 	return os.Getenv("GHPAT")
 }
 
-func Clone(ctx context.Context, args []string) error {
-	fmt.Println(args)
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: ghToken()},
-	)
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
+func cloneUserRepos(ctx context.Context, c *github.Client) error {
+	repo := queryRepo(ctx, c)
+	repoList := make([]string, len(repo)-1)
 
-	//list all repositories for the authenticated user
-	_, _, err := client.Repositories.List(ctx, "", nil)
+	for i := range repo {
+		r := repo[i]
+		log.Print(*r.GitURL)
+		go func(n string) {
+			go cloneRepo(ctx, n)
+		}(*r.GitURL)
+		fmt.Println()
+		repoList = append(repoList, *r.GitURL)
+	}
+	// for r := range repoList {
+	// 	go func(n string) {
+	// 		go cloneRepo(ctx, n)
+	// 	}(repoList[r])
+	// }
+	return nil
+}
+
+func queryRepo(ctx context.Context, c *github.Client) []*github.Repository {
+	resp, _, err := c.Repositories.List(ctx, "", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	// fmt.Println(repos)
-	// client.Repositories.Get()
-	// _,_, err := client.Repositories.Get
-	return err
+	return resp
+}
+
+func cloneRepo(ctx context.Context, url string) {
+	log.Print("cloning url:", url)
+	// exec.Command("git", "clone", *url)
 }
