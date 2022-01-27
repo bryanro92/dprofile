@@ -2,9 +2,9 @@ package clone
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/google/go-github/v42/github"
@@ -32,7 +32,7 @@ func gitHubAuth(ctx context.Context) *github.Client {
 
 func ghToken() string {
 	if pat := os.Getenv("GHPAT"); strings.EqualFold(pat, "") {
-		log.Fatal("github pat not set")
+		log.Fatal("github PAT not set")
 		os.Exit(1)
 	}
 	return os.Getenv("GHPAT")
@@ -40,16 +40,15 @@ func ghToken() string {
 
 func cloneUserRepos(ctx context.Context, c *github.Client) error {
 	repo := queryRepo(ctx, c)
-	repoList := make([]string, len(repo)-1)
+	// repoList := make([]string, len(repo)-1)
 
 	for i := range repo {
 		r := repo[i]
-		log.Print(*r.GitURL)
-		go func(n string) {
-			go cloneRepo(ctx, n)
-		}(*r.GitURL)
-		fmt.Println()
-		repoList = append(repoList, *r.GitURL)
+		// func(n string) {
+		log.Print("calling clone repo for %s", *r.GitURL)
+		cloneRepo(ctx, *r.GitURL)
+		// }(*r.GitURL)
+		// repoList = append(repoList, *r.GitURL)
 	}
 	// for r := range repoList {
 	// 	go func(n string) {
@@ -69,5 +68,10 @@ func queryRepo(ctx context.Context, c *github.Client) []*github.Repository {
 
 func cloneRepo(ctx context.Context, url string) {
 	log.Print("cloning url:", url)
-	// exec.Command("git", "clone", *url)
+	cmd := exec.Command("git", "clone", url)
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
